@@ -17,7 +17,27 @@
       value = f system;
     }) systems);
 
-    zigFor = system: zig-overlay.packages.${system}.${version};
+    pkgsFor = system: import nixpkgs { inherit system; };
+
+    # $HOME is fake/unwritable in nix build sandboxes, and zig defaults its
+    # global cache dir under $HOME
+    zigFor = system:
+      let
+        pkgs = pkgsFor system;
+        zigReal = zig-overlay.packages.${system}.${version};
+      in
+      pkgs.symlinkJoin {
+        name = "zig-${version}";
+        paths = [ zigReal ];
+        nativeBuildInputs = [ pkgs.makeWrapper ];
+        postBuild = ''
+          wrapProgram $out/bin/zig --run '
+            : "''${ZIG_GLOBAL_CACHE_DIR:=''${TMPDIR:-/tmp}/zig-cache}"
+            export ZIG_GLOBAL_CACHE_DIR
+          '
+        '';
+      };
+
     zlsFor = system: zls.packages.${system}.default;
   in
   {
@@ -28,22 +48,11 @@
       zls = zlsFor system;
     });
 
-    # $HOME is fake/unwritable in nix build sandboxes. zig defaults its
-    # global cache dir under $HOME, so point it at $TMPDIR instead.
-    # use it as
-    #   preBuild = zig-toolchain.lib.zigCacheFix;
-    lib.zigCacheFix = ''
-      export ZIG_GLOBAL_CACHE_DIR="$TMPDIR/zig-cache"
-    '';
-
-    devShells = forAllSystems (system:
-      let pkgs = import nixpkgs { inherit system; };
-      in {
-        default = pkgs.mkShell {
-          packages = [ (zigFor system) (zlsFor system) ];
-          ZIG_GLOBAL_CACHE_DIR = ".zig-cache";
-        };
-      });
+    devShells = forAllSystems (system: {
+      default = (pkgsFor system).mkShell {
+        packages = [ (zigFor system) (zlsFor system) ];
+      };
+    });
 
     # legacy alias for `devShell` (i.e. without -s)
     devShell = forAllSystems (system: self.devShells.${system}.default);
