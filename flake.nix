@@ -39,6 +39,24 @@
       };
 
     zlsFor = system: zls.packages.${system}.default;
+
+    mkZigPackage = { pkgs, zig, pname, src, zigArgs ? "" }:
+      pkgs.stdenv.mkDerivation {
+        name = pname;
+        nativeBuildInputs = [ zig ];
+        inherit src;
+        buildPhase = ''
+          zig build --release=fast ${zigArgs}
+        '';
+        installPhase = ''
+          zig build --prefix "$out" --release=fast ${zigArgs}
+        '';
+      };
+
+    mkZigShell = { pkgs, extraPackages ? [] }:
+      pkgs.mkShell {
+        packages = [ (zigFor pkgs.system) (zlsFor pkgs.system) ] ++ extraPackages;
+      };
   in
   {
     inherit forAllSystems;
@@ -48,13 +66,14 @@
       zls = zlsFor system;
     });
 
+    lib = {
+      inherit pkgsFor mkZigPackage mkZigShell;
+    };
+
     devShells = forAllSystems (system: {
       default = (pkgsFor system).mkShell {
         packages = [ (zigFor system) (zlsFor system) ];
       };
     });
-
-    # legacy alias for `devShell` (i.e. without -s)
-    devShell = forAllSystems (system: self.devShells.${system}.default);
   };
 }
