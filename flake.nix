@@ -75,5 +75,10 @@
         packages = [ (zigFor system) (zlsFor system) ];
       };
     });
+
+    templates.default = {
+      path = ./templates/default;
+      description = "zig ${version} project scaffold using this toolchain's devShell";
+    };
   };
 }
