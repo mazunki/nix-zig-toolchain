@@ -2,7 +2,7 @@
   description = "app";
 
   inputs = {
-    zig-toolchain.url = "github:mazunki/zig-toolchain";
+    zig-toolchain.url = "github:mazunki/nix-zig-toolchain";
   };
 
   outputs = { self, zig-toolchain, ... }:
