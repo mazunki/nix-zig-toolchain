@@ -24,4 +24,10 @@ pub fn build(b: *std.Build) void {
     });
     const run_tests = b.addRunArtifact(tests);
     b.step("test", "Run unit tests").dependOn(&run_tests.step);
+
+    const exe_check = b.addExecutable(.{
+        .name = "app",
+        .root_module = exe.root_module,
+    });
+    b.step("check", "Check if app compiles").dependOn(&exe_check.step);
 }
